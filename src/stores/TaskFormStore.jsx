@@ -1,0 +1,305 @@
+import MobxReactForm from 'mobx-react-form';
+import validatorjs from 'validatorjs';
+import {observable, computed, action} from 'mobx';
+import {hashHistory} from 'react-router';
+import RestClientService from '../services/RestClientService.jsx';
+
+/**
+ * TaskFormStore plugins property
+ */
+const plugins = {
+    dvr: validatorjs
+};
+
+/**
+ * TaskFormStore fields property
+ */
+const fields = ['id', 'task', 'completed', 'priority'];
+
+/**
+ * TaskFormStore rules property
+ */
+const rules = {
+    task: 'required|string|between:5,25',
+    completed: 'boolean|required',
+    priority: 'required'
+};
+
+/**
+ * TaskFormStore values property
+ */
+const values = {
+    id: null,
+    task: '',
+    completed: false,
+    priority: null
+};
+
+/**
+ * TaskFormStore labels property
+ */
+const labels = {
+    task: 'Task',
+    completed: 'Completed',
+    priority: 'Priority'
+};
+
+/**
+ * TaskFormStore extends MobxReactForm class and implements methods to handle task form
+ * and communication with REST server.
+ * TaskFormStore flat fields are defined as separated properties
+ * (https://foxhound87.github.io/mobx-react-form/docs/defining-flat-fields/separated-properties.html)
+ *
+ * @class TaskFormStore
+ * @extends {MobxReactForm}
+ */
+class TaskFormStore extends MobxReactForm {
+
+    /**
+     * List of tasks retrieved from server
+     *
+     * @memberOf TaskFormStore
+     */
+    @observable tasks = [];
+
+    /**
+     * List of priorities retrieved from server
+     *
+     * @memberOf TaskFormStore
+     */
+    @observable priorities = [];
+
+    /**
+     * Form has passed client side validation
+     * Submit form to server
+     *
+     * @param {any} form
+     *
+     * @memberOf TaskFormStore
+     */
+    onSuccess(form) {
+        console.log('Form Values!', form.values());
+        // Check if submitted task is for update or create Edited task has id property
+        // New task has empty id property
+        console.log('All form errors', form.errors());
+      
+        if(form.errors().priority !=null || form.errors().task!=null ){
+           
+        }
+        else{
+        if(form.values().id =='')
+    {
+       
+       
+        console.log('Sdasd');
+         RestClientService.callPost('/tasks', form.values()).then(response => {
+
+            return response
+                .json()
+                .then(json => {
+                    hashHistory.push('/');
+                });
+        }).catch(err => {
+            console.error('Create failed');
+        });
+    }
+     else{
+     
+        RestClientService.callPut('/tasks/' + form.values().id, form.values()).then(response => {
+
+            return response
+                .json()
+                .then(json => {
+                    hashHistory.push('/');
+                });
+        }).catch(err => {
+            console.error('Update failed');
+        });
+   
+    }
+}
+
+        // form
+        //     .values()
+        //     .id
+        //     ? this.updateTask(form.values())
+        //     : this.createTask(form.values());
+    }
+
+    /**
+     * Form has failed on client side validation
+     *
+     * @param {any} form
+     *
+     * @memberOf TaskFormStore
+     */
+   
+
+    /**
+     * Return number of completed tasks
+     * 
+     * @readonly
+     * 
+     * @memberOf TaskFormStore
+     */
+    @computed get completed() {
+        return this.tasks.filter(
+			task => task.completed === true
+		).length;
+    }
+
+    /**
+     * Fetch all tasks from server
+     *
+     *
+     * @memberOf TaskFormStore
+     */
+    @action fetchAll() {
+        RestClientService.callGet('/tasks').then(response => {
+
+            return response
+                .json()
+                .then(json => {
+                    this.tasks = json;
+                });
+        }).catch(err => {
+            console.error('Fetch all tasks failed', err);
+        });
+    }
+
+    /**
+     * Fetch task from server by id and update TaskFormStore values property
+     *
+     * @param {any} id
+     *
+     * @memberOf TaskFormStore
+     */
+    @action fetchById(id) {
+        RestClientService.callGet('/tasks/' + id).then(response => {
+
+            return response
+                .json()
+                .then(json => {
+                    // update TaskFormStore values property
+                    this.update(json)
+                });
+        }).catch(err => {
+            console.error('Fetch task by id failed');
+        });
+    }
+
+    /**
+     * Fetch priorities from server
+     *
+     * @memberOf TaskFormStore
+     */
+    @action fetchPriorities() {
+        // To reduce number of REST api calls, fetch priorities only when list is empty
+        if (this.priorities.length == 0) {
+            RestClientService.callGet('/priorities').then(response => {
+
+                return response
+                    .json()
+                    .then(json => {
+                        this.priorities = json;
+                    });
+            }).catch(err => {
+                console.error('Fetch priorities failed');
+            });
+        }
+    }
+
+    /**
+     * Send POST request to server with new task
+     * Redirect to Task page if request was successful
+     *
+     * @param {object} task
+     *
+     * @memberOf TaskFormStore
+     */
+    createTask(task) {
+        console.log('Sdasd');
+         RestClientService.callPost('/tasks', task).then(response => {
+
+            return response
+                .json()
+                .then(json => {
+                    hashHistory.push('/');
+                });
+        }).catch(err => {
+            console.error('Create failed');
+        });
+    }
+
+    /**
+     * Send PUT request to server with edited task
+     * Redirect to Task page if request was successful
+     *
+     * @param {any} task
+     *
+     * @memberOf TaskFormStore
+     */
+    updateTask(task) {
+        RestClientService.callPut('/tasks/' + task.id, task).then(response => {
+
+            return response
+                .json()
+                .then(json => {
+                    hashHistory.push('/');
+                });
+        }).catch(err => {
+            console.error('Update failed');
+        });
+    }
+
+    /**
+     * Send DELETE request to server for given task
+     * Redirect to Task page if request was successful
+     * 
+     * @param {any} task 
+     * 
+     * @memberOf TaskFormStore
+     */
+    deleteTask(task) {
+        RestClientService.callDelete('/tasks/' + task.id).then(response => {
+
+            return response
+                .json()
+                .then(json => {
+                    hashHistory.push('/');
+                });
+        }).catch(err => {
+            console.error('Delete failed');
+        });
+    }
+
+    /**
+     * Returns priority name for given priority id
+     * 
+     * @param {any} id 
+     * @returns 
+     * 
+     * @memberOf TaskFormStore
+     */
+    getPriorityName(id) {
+        switch (id) {
+            case '1':
+                return 'Urgent';
+            case '2':
+                return 'High';
+            case '3':
+                return 'Medium';
+            case '4':
+                return 'Low';
+            default:
+                return 'Undefined';
+        }
+    }
+}
+
+export default new TaskFormStore({
+    fields,
+    rules,
+    values,
+    labels
+}, {plugins});
